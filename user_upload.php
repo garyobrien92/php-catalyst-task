@@ -10,7 +10,7 @@ $createTable = array_key_exists("create-table", $options);
 $dryRun = array_key_exists("dry-run", $options);
 $help = array_key_exists("help", $options);
 
-if($help) {
+if ($help) {
   echo "--file [csv file name] – this is the name of the CSV to be parsed" . "\n";
 
   echo "--create_table – this will cause the MySQL users table to be built (and no further action will be taken)" . "\n";
@@ -29,37 +29,35 @@ if($help) {
   exit(1);
 }
 
-if(!isset($options["file"]) || empty(trim($options["file"])) ) {
-    echo "Please provide a file path for csv file";
-    return;
+if (!isset($options["file"]) || empty(trim($options["file"]))) {
+  fwrite(STDOUT,  "Please provide a file path for csv file");
+  die;
 }
 
-if(!str_ends_with($options["file"],".csv")) {
-    echo "Please provide a valid csv file";
-    return;
+if (!str_ends_with($options["file"], ".csv")) {
+  echo "Please provide a valid csv file";
+  die;
 }
 
-if(!isset($options["u"]) || empty(trim($options["u"])) ) {
-    echo "Please username for database";
-    return;
+if (!isset($options["u"]) || empty(trim($options["u"]))) {
+  fwrite(STDOUT,  "Please username for database");
+  die;
 }
 
-if(!isset($options["p"]) || empty(trim($options["p"])) ) {
-    echo "Please password for database";
-    return;
+if (!isset($options["p"]) || empty(trim($options["p"]))) {
+  fwrite(STDOUT,  "Please password for database");
+  die;
 }
 
-if(!isset($options["h"]) || empty(trim($options["h"])) ) {
-    echo "Please host for database";
-    return;
+if (!isset($options["h"]) || empty(trim($options["h"]))) {
+  fwrite(STDOUT, "Please host for database");
+  die;
 }
 
-var_dump($options);
-
-$dbInstance = DatabaseConnect::getInstance( $options["h"], $options["u"], $options["p"], "users_csv_upload");
+$dbInstance = DatabaseConnect::getInstance($options["h"], $options["u"], $options["p"], "users_csv_upload");
 $db = $dbInstance->getConnection();
 
-if($createTable) {
+if ($createTable) {
   // Attempt create table query execution
   $sql = "CREATE TABLE IF NOT EXISTS users (
     id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
@@ -68,44 +66,47 @@ if($createTable) {
     email VARCHAR(70) NOT NULL UNIQUE
   )
   ";
-  if($db->query($sql) === true){
-    echo "Table created successfully\n";
-
+  if ($db->query($sql) === true) {
+    fwrite(STDOUT, "Table created successfully\n");
   } else {
     $message = "ERROR: Could not able to execute $sql. " . $db->error;
     fwrite(STDOUT, $message);
   }
 }
 
-if(!$dryRun) {
+if (!$dryRun) {
   $file = fopen($options["file"], "r");
   fgetcsv($file);
   while (($row = fgetcsv($file)) !== FALSE) {
-    $stmt = $db->prepare("INSERT INTO users (name,surname,email) VALUES (?,?,?)");
+    try {
+      $stmt = $db->prepare("INSERT INTO users (name,surname,email) VALUES (?,?,?)");
 
-    $nameLower = strtolower($row[0]);
-    $name = ucfirst($nameLower);
-    $surnameLower = strtolower($row[1]);
-    $surname = ucwords($surnameLower);
-    $email = strtolower($row[2]);
+      $nameLower = strtolower($row[0]);
+      $name = ucfirst(trim($nameLower));
+      $surnameLower = strtolower($row[1]);
+      $surname = ucwords(trim($surnameLower));
+      $email = strtolower(trim($row[2]));
 
-    $validEmail = filter_var($email, FILTER_VALIDATE_EMAIL);
+      $validEmail = filter_var($email, FILTER_VALIDATE_EMAIL);
 
-    if(!$validEmail) {
-      $message = $row[2] . "is a invalid email. Please fix and try again ";
-      fwrite(STDOUT, $message);
-      $stmt->close();
-      return;
+      if(!$validEmail) {
+        $message = $row[2] . " is a invalid email.";
+        fwrite(STDOUT, $message);
+        $stmt->close();
+        die;
+      }
+
+      $stmt->bind_param("sss", $name, $surname, $email);
+      $stmt->execute();
+    } catch (mysqli_sql_exception $e) {
+      fwrite(STDOUT, $e->getMessage());
+      die;
     }
-
-    $stmt->bind_param("sss", $name, $surname, $email);
-    $stmt->execute();
   }
-  echo "Csv data inserted into db.";
 }
 
-if($dryRun) {
-    echo "Dry run";
+if ($dryRun) {
+  echo "Dry run";
 }
 
 $db->close();
