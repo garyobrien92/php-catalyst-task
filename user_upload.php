@@ -22,7 +22,7 @@ if ($help) {
 
   echo "-h – MySQL host" . "\n";
 
-  echo "\r\n";
+  echo "\n";
 
   exit(1);
 }
