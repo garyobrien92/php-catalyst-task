@@ -1,16 +1,17 @@
 <?php
-
 class DatabaseConnect {
     private static $instance = null;
     private $conn;
 
 
     private function __construct($host, $username, $password, $databaseName) {
-        $this->conn = new mysqli($host, $username, $password, $databaseName);
- 
-        // Check connection
-        if($this->conn === false){
-            die("ERROR: Could not connect. " . $this->conn->connect_error);
+        try {
+            $this->conn = new mysqli($host, $username, $password, $databaseName);
+        }
+        catch (mysqli_sql_exception $e) {
+            fwrite(STDOUT, "Failed to connect to database, Please check your host user and password\n");
+            fwrite(STDOUT, $e->getMessage());
+            die;
         }
     }
 

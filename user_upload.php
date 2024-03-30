@@ -11,9 +11,9 @@ $help = array_key_exists("help", $options);
 if ($help) {
   fwrite(STDOUT, "--file [csv file name] – this is the name of the CSV to be parsed" . "\n");
 
-  fwrite(STDOUT,"--create_table – this will cause the MySQL users table to be built (and no further action will be taken)" . "\n");
+  fwrite(STDOUT, "--create_table – this will cause the MySQL users table to be built (and no further action will be taken)" . "\n");
 
-  fwrite(STDOUT,"--dry_run – this will be used with the --file directive in case we want to run the script but not insert
+  fwrite(STDOUT, "--dry_run – this will be used with the --file directive in case we want to run the script but not insert
   into the DB. All other functions will be executed, but the database won't be altered" . "\n");
 
   fwrite(STDOUT, "-u – MySQL username" . "\n");
@@ -50,7 +50,11 @@ if (!isset($options["h"]) || empty(trim($options["h"]))) {
   die;
 }
 
-$dbInstance = DatabaseConnect::getInstance($options["h"], $options["u"], $options["p"], "users_csv_upload");
+$dbHost = $options["h"];
+$dbUser = $options["u"];
+$dbPass = $options["p"];
+
+$dbInstance = DatabaseConnect::getInstance($dbHost, $dbUser, $dbPass, "users_csv_upload");
 $db = $dbInstance->getConnection();
 
 if ($createTable) {
@@ -59,7 +63,7 @@ if ($createTable) {
 
   try {
     $db->query($dropTable);
-  } catch(mysqli_sql_exception $e) {
+  } catch (mysqli_sql_exception $e) {
     fwrite(STDOUT, $e->getMessage());
     die;
   }
@@ -73,14 +77,18 @@ if ($createTable) {
     )";
 
     $db->query($sql);
-  }
-  catch(mysqli_sql_exception $e) {
+  } catch (mysqli_sql_exception $e) {
     fwrite(STDOUT, $e->getMessage());
     die;
   }
 }
 
 if (!$dryRun) {
+  if (!file_exists($options["file"]) ) {
+    fwrite(STDOUT, 'Csv file not found, Please provide a valid path for csv file');
+    die;
+  }
+
   $file = fopen($options["file"], "r");
   fgetcsv($file);
   while (($row = fgetcsv($file)) !== FALSE) {
@@ -95,7 +103,7 @@ if (!$dryRun) {
 
       $validEmail = filter_var($email, FILTER_VALIDATE_EMAIL);
 
-      if(!$validEmail) {
+      if (!$validEmail) {
         $message = $row[2] . " is a invalid email.";
         fwrite(STDOUT, $message);
         $stmt->close();
@@ -112,4 +120,3 @@ if (!$dryRun) {
 }
 
 $db->close();
-?>
